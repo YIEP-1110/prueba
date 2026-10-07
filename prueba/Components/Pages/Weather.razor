@@ -1,35 +1,58 @@
 ﻿@page "/weather"
 @attribute [StreamRendering]
+@using prueba.Data
+@using prueba.Services
+@inject Microsoft.Extensions.Logging.ILogger<Weather> Logger
 
-<PageTitle>Weather</PageTitle>
+<PageTitle>Actividades</PageTitle>
 
-<h1>Weather</h1>
+<h1>Actividades</h1>
 
-<p>This component demonstrates showing data.</p>
+<p>Test de actividades</p>
 
-@if (forecasts == null)
+@if (actividades == null)
 {
     <p><em>Loading...</em></p>
+}
+else if (actividadesError != null)
+{
+    <div class="alert alert-danger" role="alert">
+        <strong>Database error:</strong> @actividadesError
+        <details>
+            <summary>Show details</summary>
+            <pre>@actividadesErrorDetail</pre>
+        </details>
+    </div>
+}
+else if (!actividades.Any())
+{
+    <p><em>No actividades found.</em></p>
 }
 else
 {
     <table class="table">
         <thead>
             <tr>
-                <th>Date</th>
-                <th aria-label="Temperature in Celsius">Temp. (C)</th>
-                <th aria-label="Temperature in Fahrenheit">Temp. (F)</th>
-                <th>Summary</th>
+                <th>Id</th>
+                <th>Id Sala</th>
+                <th>Id Ponencia</th>
+                <th>Fecha</th>
+                <th>Hora Inicio</th>
+                <th>Hora Fin</th>
+                <th>Tipo</th>
             </tr>
         </thead>
         <tbody>
-            @foreach (var forecast in forecasts)
+            @foreach (var a in actividades)
             {
                 <tr>
-                    <td>@forecast.Date.ToShortDateString()</td>
-                    <td>@forecast.TemperatureC</td>
-                    <td>@forecast.TemperatureF</td>
-                    <td>@forecast.Summary</td>
+                    <td>@a.IdActividad</td>
+                    <td>@(a.IdSala?.ToString() ?? "")</td>
+                    <td>@(a.IdPonencia?.ToString() ?? "")</td>
+                    <td>@a.Fecha.ToString("yyyy-MM-dd")</td>
+                    <td>@a.HoraInicio.ToString()</td>
+                    <td>@a.HoraFin.ToString()</td>
+                    <td>@a.TipoActividad</td>
                 </tr>
             }
         </tbody>
@@ -37,28 +60,26 @@ else
 }
 
 @code {
-    private WeatherForecast[]? forecasts;
+    [Inject]
+    private IWeatherService WeatherService { get; set; } = null!;
+
+    private Actividad[] actividades = Array.Empty<Actividad>();
+    private string? actividadesError;
+    private string? actividadesErrorDetail;
 
     protected override async Task OnInitializedAsync()
     {
-        // Simulate asynchronous loading to demonstrate streaming rendering
-        await Task.Delay(500);
-
-        var startDate = DateOnly.FromDateTime(DateTime.Now);
-        var summaries = new[] { "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching" };
-        forecasts = Enumerable.Range(1, 5).Select(index => new WeatherForecast
+        try
         {
-            Date = startDate.AddDays(index),
-            TemperatureC = Random.Shared.Next(-20, 55),
-            Summary = summaries[Random.Shared.Next(summaries.Length)]
-        }).ToArray();
-    }
-
-    private class WeatherForecast
-    {
-        public DateOnly Date { get; set; }
-        public int TemperatureC { get; set; }
-        public string? Summary { get; set; }
-        public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
+            actividades = await WeatherService.GetActividadesAsync();
+        }
+        catch (Exception ex)
+        {
+            actividadesError = ex.Message;
+            actividadesErrorDetail = ex.ToString();
+            actividades = Array.Empty<Actividad>();
+            Logger.LogError(ex, "Error fetching actividades in component");
+        }
     }
 }
+
