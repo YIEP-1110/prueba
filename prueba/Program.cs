@@ -85,6 +85,8 @@ builder.Services.AddScoped<IWeatherService, WeatherService>();
 // Register ParticipantsService which always reads from Cosmos
 builder.Services.AddScoped<IParticipantsService, ParticipantsService>();
 
+builder.Services.AddScoped<IParticipantesCrudService, ParticipantesCrudService>();
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.

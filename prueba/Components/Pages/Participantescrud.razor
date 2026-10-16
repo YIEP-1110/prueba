@@ -1,0 +1,128 @@
+﻿@page "/participantescrud"
+@rendermode InteractiveServer
+@using prueba.Data
+@using prueba.Services
+@inject IParticipantesCrudService Servicio
+
+<h3>Participantes </h3>
+
+@if (!string.IsNullOrEmpty(mensaje))
+{
+    <div class="alert @(esError ? "alert-danger" : "alert-success")">@mensaje</div>
+}
+
+<EditForm Model="actual" OnValidSubmit="Guardar">
+    <input class="form-control mb-2" placeholder="Id usuario" @bind="actual.IdUsuarios" disabled="@editando" />
+    <input class="form-control mb-2" placeholder="Nombre" @bind="actual.Nombre" />
+    <input class="form-control mb-2" placeholder="Apellido paterno" @bind="actual.Apellido_paterno" />
+    <input class="form-control mb-2" placeholder="Apellido materno" @bind="actual.Apellido_materno" />
+    <input class="form-control mb-2" placeholder="Teléfono" @bind="actual.Telefono" />
+    <select class="form-select mb-2" @bind="actual.Tipo_participacion">
+        <option>Ponente</option>
+        <option>Asistente</option>
+        <option>Ambos</option>
+    </select>
+    <div class="form-check mb-2">
+        <input class="form-check-input" type="checkbox" @bind="actual.Estado_registro" id="estado" />
+        <label class="form-check-label" for="estado">Registro activo</label>
+    </div>
+    <button class="btn btn-primary" type="submit">@(editando ? "Actualizar" : "Agregar")</button>
+    <button class="btn btn-secondary" type="button" @onclick="Limpiar">Cancelar</button>
+</EditForm>
+
+<table class="table table-striped mt-4">
+    <thead>
+        <tr>
+            <th>Nombre</th>
+            <th>Apellidos</th>
+            <th>Teléfono</th>
+            <th>Tipo</th>
+            <th>Activo</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var p in lista)
+        {
+            <tr>
+                <td>@p.Nombre</td>
+                <td>@p.Apellido_paterno @p.Apellido_materno</td>
+                <td>@p.Telefono</td>
+                <td>@p.Tipo_participacion</td>
+                <td>@(p.Estado_registro ? "Sí" : "No")</td>
+                <td>
+                    <button class="btn btn-sm btn-warning" @onclick="() => Editar(p)">Editar</button>
+                    <button class="btn btn-sm btn-danger" @onclick="() => Eliminar(p)">Eliminar</button>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@code {
+    private List<Participante> lista = new();
+    private Participante actual = new();
+    private bool editando;
+    private string? mensaje;
+    private bool esError;
+
+    protected override async Task OnInitializedAsync() => await Cargar();
+
+    private async Task Cargar()
+    {
+        try { lista = await Servicio.GetAllAsync(); }
+        catch (Exception ex) { Mostrar("Error al cargar: " + ex.Message, true); }
+    }
+
+    private async Task Guardar()
+    {
+        try
+        {
+            if (editando) await Servicio.UpdateAsync(actual);
+            else await Servicio.CreateAsync(actual);
+            Mostrar(editando ? "Participante actualizado." : "Participante agregado.", false);
+            Limpiar();
+            await Cargar();
+        }
+        catch (Exception ex) { Mostrar("Error al guardar: " + ex.Message, true); }
+    }
+
+    private void Editar(Participante p)
+    {
+        actual = new Participante
+        {
+            Id = p.Id,
+            IdUsuarios = p.IdUsuarios,
+            Nombre = p.Nombre,
+            Apellido_paterno = p.Apellido_paterno,
+            Apellido_materno = p.Apellido_materno,
+            Telefono = p.Telefono,
+            Tipo_participacion = p.Tipo_participacion,
+            Estado_registro = p.Estado_registro
+        };
+        editando = true;
+    }
+
+    private async Task Eliminar(Participante p)
+    {
+        try
+        {
+            await Servicio.DeleteAsync(p.Id, p.IdUsuarios);
+            Mostrar("Participante eliminado.", false);
+            await Cargar();
+        }
+        catch (Exception ex) { Mostrar("Error al eliminar: " + ex.Message, true); }
+    }
+
+    private void Limpiar()
+    {
+        actual = new Participante();
+        editando = false;
+    }
+
+    private void Mostrar(string texto, bool error)
+    {
+        mensaje = texto;
+        esError = error;
+    }
+}
