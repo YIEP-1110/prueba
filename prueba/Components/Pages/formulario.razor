@@ -1,6 +1,61 @@
 ﻿@page "/formulario"
-<h3>Formulario</h3>
+@using System.Text.Json
+@using prueba.Data
+@inject prueba.Services.IParticipantsService ParticipantsService
+
+<h3>Participantes</h3>
+
+@if (loading)
+{
+    <p><em>Loading participantes...</em></p>
+}
+else if (errorMessage is not null)
+{
+    <div class="alert alert-danger">@errorMessage</div>
+}
+else if (participantes is null || participantes.Length == 0)
+{
+    <p>No participantes found.</p>
+}
+else
+{
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Id</th>
+                <th>Documento (raw)</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var p in participantes)
+            {
+                <tr>
+                    <td>-</td>
+                    <td><pre style="white-space:pre-wrap;">@p</pre></td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
 
 @code {
+    private string[]? participantes;
+    private bool loading = true;
+    private string? errorMessage;
 
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            participantes = await ParticipantsService.GetParticipantesAsync();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = "Error cargando participantes: " + ex.Message;
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
 }

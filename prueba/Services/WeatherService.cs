@@ -11,12 +11,12 @@ namespace prueba.Services
 
     public class WeatherService : IWeatherService
     {
-        private readonly AppDbContext _db;
+        private readonly SqlAppDbContext _sqlDb;
         private readonly ILogger<WeatherService> _logger;
 
-        public WeatherService(AppDbContext db, ILogger<WeatherService> logger)
+        public WeatherService(SqlAppDbContext sqlDb, ILogger<WeatherService> logger)
         {
-            _db = db;
+            _sqlDb = sqlDb;
             _logger = logger;
         }
 
@@ -24,8 +24,9 @@ namespace prueba.Services
         {
             try
             {
-                return await _db.Actividades
-                    .FromSqlRaw("SELECT * FROM dbo.Actividades")
+                // Always query the relational database for activities
+                return await Microsoft.EntityFrameworkCore.RelationalQueryableExtensions
+                    .FromSqlRaw(_sqlDb.Actividades, "SELECT * FROM dbo.Actividades")
                     .ToArrayAsync();
             }
             catch (Exception ex)
