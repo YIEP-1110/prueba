@@ -6,6 +6,7 @@ namespace prueba.Services;
 public interface IParticipantesCrudService
 {
     Task<List<Participante>> GetAllAsync();
+    Task<List<Participante>> SearchAsync(string termino);   
     Task<Participante?> GetAsync(string id, string idUsuarios);
     Task CreateAsync(Participante p);
     Task UpdateAsync(Participante p);
@@ -27,6 +28,29 @@ public class ParticipantesCrudService : IParticipantesCrudService
     {
         var iterator = _container.GetItemQueryIterator<Participante>(
             new QueryDefinition("SELECT * FROM c"));
+        var lista = new List<Participante>();
+        while (iterator.HasMoreResults)
+        {
+            var resp = await iterator.ReadNextAsync();
+            lista.AddRange(resp);
+        }
+        return lista;
+    }
+    public async Task<List<Participante>> SearchAsync(string termino)
+    {
+        if (string.IsNullOrWhiteSpace(termino))
+            return await GetAllAsync();
+
+        var query = new QueryDefinition(
+            @"SELECT * FROM c
+          WHERE CONTAINS(c.Nombre, @t, true)
+             OR CONTAINS(c.Apellido_paterno, @t, true)
+             OR CONTAINS(c.Apellido_materno, @t, true)
+             OR CONTAINS(c.Telefono, @t, true)
+             OR CONTAINS(c.Tipo_participacion, @t, true)")
+            .WithParameter("@t", termino.Trim());
+
+        var iterator = _container.GetItemQueryIterator<Participante>(query);
         var lista = new List<Participante>();
         while (iterator.HasMoreResults)
         {
