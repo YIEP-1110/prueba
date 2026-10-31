@@ -20,7 +20,7 @@ public class ParticipantesCrudService : IParticipantesCrudService
     public ParticipantesCrudService(CosmosClient client, IConfiguration config)
     {
         var db = config["ConnectionStrings2:CosmosDb_Database"];
-        var cont = config["ConnectionStrings2:CosmosDb_Container"];
+        var cont = config["ConnectionStrings2:CosmosDb_Container_Participantes"];
         _container = client.GetContainer(db, cont);
     }
 
@@ -74,10 +74,10 @@ public class ParticipantesCrudService : IParticipantesCrudService
     }
 
     public async Task CreateAsync(Participante p) =>
-        await _container.CreateItemAsync(p, new PartitionKey(p.IdUsuarios));
+        await _container.CreateItemAsync(p, new PartitionKey(p.Id));
 
     public async Task UpdateAsync(Participante p) =>
-        await _container.ReplaceItemAsync(p, p.Id, new PartitionKey(p.IdUsuarios));
+        await _container.ReplaceItemAsync(p, p.Id, new PartitionKey(p.Id));
 
     public async Task DeleteAsync(string id, string idUsuarios) =>
         await _container.DeleteItemAsync<Participante>(id, new PartitionKey(idUsuarios));
