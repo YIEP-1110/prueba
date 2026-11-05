@@ -26,7 +26,7 @@ else if (pagosError != null)
 }
 else if (!pagos.Any())
 {
-    <p><em>No actividades found.</em></p>
+    <p><em>No se encontraron pagos.</em></p>
 }
 else
 {
@@ -35,24 +35,24 @@ else
             <tr>
                 <th>Id</th>
                 <th>Id Participante</th>
-                <th>Id Ponencia</th>
                 <th>Monto</th>
                 <th>Metodo de Pago</th>
                 <th>Fecha de Pago</th>
                 <th>Estado de Pago</th>
+                <th>Comprobante</th>
             </tr>
         </thead>
         <tbody>
             @foreach (var p in pagos)
             {
                 <tr>
-                    <td>@p.IdActividad</td>
-                    <td>@(a.IdSala?.ToString() ?? "")</td>
-                    <td>@(a.IdPonencia?.ToString() ?? "")</td>
-                    <td>@a.Fecha.ToString("yyyy-MM-dd")</td>
-                    <td>@a.HoraInicio.ToString()</td>
-                    <td>@a.HoraFin.ToString()</td>
-                    <td>@a.TipoActividad</td>
+                    <td>@p.IdPago</td>
+                    <td>@p.IdParticipante</td>
+                    <td>@p.Monto</td>
+                    <td>@p.MetodoPago</td>
+                    <td>@p.FechaPago.ToString("yyyy-MM-dd")</td>
+                    <td>@(p.Estado ? "Pagado" : "Pendiente")</td>
+                    <td>@p.Comprobante</td>
                 </tr>
             }
         </tbody>
@@ -80,7 +80,7 @@ else
             pagosError = ex.Message;
             pagosErrorDetail = ex.ToString();
             pagos = Array.Empty<Pago>();
-            Logger.LogError(ex, "Error fetching actividades in component");
+            Logger.LogError(ex, "Error fetching pagos in component");
         }
     }
 }

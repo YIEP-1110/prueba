@@ -5,9 +5,9 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace prueba.Data
 {
-    public class AppDbPagos : DbPagos
+    public class AppDbPagos : DbContext
     {
-        public AppDbPagos(DbPagosOptions<AppDbPagos> options) : base(options)
+        public AppDbPagos(DbContextOptions<AppDbPagos> options) : base(options)
         {
         }
         public DbSet<Pago> Pagos { get; set; } = null!;

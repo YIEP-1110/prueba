@@ -23,8 +23,8 @@ namespace prueba.Services
         {
             try
             {
-                return await _db.Pagos
-                    .FromSqlRaw("SELECT * FROM dbo.Pagos")
+                return await Microsoft.EntityFrameworkCore.RelationalQueryableExtensions
+                    .FromSqlRaw(_db.Pagos, "SELECT * FROM dbo.Pagos")
                     .ToArrayAsync();
             }
             catch (Exception ex)

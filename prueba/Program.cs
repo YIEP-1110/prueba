@@ -29,11 +29,10 @@ var cosmosSettings = builder.Configuration.GetSection("ConnectionStrings2").Get<
 var cosmosConn = cosmosSettings?.CosmosDb;
 var cosmosDbName = cosmosSettings?.CosmosDb_Database;
 
-// Register AppDbContext -> SqlAppDbContext (default)
-
-
-// Register Cosmos-specific context
-
+// Pagos usa SQL Server y debe registrarse con el mismo tipo que inyecta
+// PagosService. Sin este registro, el contenedor no puede construirlo.
+builder.Services.AddDbContext<AppDbPagos>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 // Register CosmosClient for direct SDK access (used by ParticipantsService)
 if (!string.IsNullOrWhiteSpace(cosmosConn))
@@ -50,17 +49,20 @@ if (!string.IsNullOrWhiteSpace(cosmosConn))
         if (k.Equals("AccountKey", StringComparison.OrdinalIgnoreCase)) key = v;
     }
 
-    if (!string.IsNullOrWhiteSpace(endpoint) && !string.IsNullOrWhiteSpace(key))
+    if (!string.IsNullOrWhiteSpace(endpoint) && !string.IsNullOrWhiteSpace(key)
+        && !string.IsNullOrWhiteSpace(cosmosDbName))
     {
         builder.Services.AddSingleton(new Microsoft.Azure.Cosmos.CosmosClient(endpoint, key));
+
+        // Estos servicios dependen de CosmosClient; no se registran si Cosmos
+        // no está configurado para evitar dependencias imposibles de resolver.
+        builder.Services.AddScoped<IParticipantesCrudService, ParticipantesCrudService>();
+        builder.Services.AddScoped<IPonenciasCrudService, PonenciasCrudService>();
+        builder.Services.AddScoped<IPonentesCrudService, PonentesCrudService>();
     }
 }
 
-
-
-builder.Services.AddScoped<IParticipantesCrudService, ParticipantesCrudService>();
-builder.Services.AddScoped<IPonenciasCrudService, PonenciasCrudService>();
-builder.Services.AddScoped<IPonentesCrudService, PonentesCrudService>();
+builder.Services.AddScoped<IPagosService, PagosService>();
 builder.Services.AddScoped<IPdfStorageService, LocalPdfStorageService>();
 
 var app = builder.Build();
