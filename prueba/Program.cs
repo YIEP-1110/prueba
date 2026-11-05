@@ -30,35 +30,10 @@ var cosmosConn = cosmosSettings?.CosmosDb;
 var cosmosDbName = cosmosSettings?.CosmosDb_Database;
 
 // Register AppDbContext -> SqlAppDbContext (default)
-builder.Services.AddDbContext<AppDbContext, SqlAppDbContext>(options =>
-{
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"));
-});
+
 
 // Register Cosmos-specific context
-builder.Services.AddDbContext<CosmosAppDbContext>(options =>
-{
-    if (!string.IsNullOrWhiteSpace(cosmosConn))
-    {
-        string? endpoint = null;
-        string? key = null;
-        foreach (var part in cosmosConn.Split(';', StringSplitOptions.RemoveEmptyEntries))
-        {
-            var kv = part.Split('=', 2);
-            if (kv.Length != 2) continue;
-            var k = kv[0].Trim();
-            var v = kv[1].Trim();
-            if (k.Equals("AccountEndpoint", StringComparison.OrdinalIgnoreCase)) endpoint = v;
-            if (k.Equals("AccountKey", StringComparison.OrdinalIgnoreCase)) key = v;
-        }
 
-        if (!string.IsNullOrWhiteSpace(endpoint) && !string.IsNullOrWhiteSpace(key))
-        {
-            var dbName = !string.IsNullOrWhiteSpace(cosmosDbName) ? cosmosDbName : "MyCosmosDatabase";
-            options.UseCosmos(endpoint, key, dbName);
-        }
-    }
-});
 
 // Register CosmosClient for direct SDK access (used by ParticipantsService)
 if (!string.IsNullOrWhiteSpace(cosmosConn))
@@ -81,9 +56,7 @@ if (!string.IsNullOrWhiteSpace(cosmosConn))
     }
 }
 
-builder.Services.AddScoped<IWeatherService, WeatherService>();
-// Register ParticipantsService which always reads from Cosmos
-builder.Services.AddScoped<IParticipantsService, ParticipantsService>();
+
 
 builder.Services.AddScoped<IParticipantesCrudService, ParticipantesCrudService>();
 builder.Services.AddScoped<IPonenciasCrudService, PonenciasCrudService>();
