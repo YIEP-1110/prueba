@@ -1,0 +1,164 @@
+﻿@page "/ponencias"
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Components.Forms
+@using prueba.Data
+@using prueba.Services
+@inject IPonenciasCrudService PonenciasSvc
+@inject IPonentesCrudService PonentesSvc
+@inject IPdfStorageService Pdfs
+
+<h3>Ponencias</h3>
+
+@if (_error != null)
+{
+    <div class="alert alert-danger">@_error</div>
+}
+
+<EditForm Model="_model" OnValidSubmit="Guardar" class="card card-body mb-4">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+    <h5>@(_editando ? "Editar ponencia" : "Nueva ponencia")</h5>
+
+    <div class="mb-2">
+        <label class="form-label">Ponente</label>
+        <InputSelect class="form-select" @bind-Value="_model.IdPonente" disabled="@_editando">
+            <option value="">-- Selecciona --</option>
+            @foreach (var p in _ponentes)
+            {
+                <option value="@p.Ponente!.IdPonente">@p.Nombre @p.Apellido_paterno</option>
+            }
+        </InputSelect>
+    </div>
+    <div class="mb-2">
+        <label class="form-label">Título</label>
+        <InputText class="form-control" @bind-Value="_model.Titulo" />
+    </div>
+    <div class="mb-2">
+        <label class="form-label">Resumen</label>
+        <InputTextArea class="form-control" rows="3" @bind-Value="_model.Resumen" />
+    </div>
+    <div class="mb-2">
+        <label class="form-label">Categoría</label>
+        <InputText class="form-control" @bind-Value="_model.Categoria" />
+    </div>
+    <div class="mb-2">
+        <label class="form-label">Estado</label>
+        <InputSelect class="form-select" @bind-Value="_model.Estado">
+            <option value="pendiente">Pendiente</option>
+            <option value="aceptada">Aceptada</option>
+            <option value="rechazada">Rechazada</option>
+        </InputSelect>
+    </div>
+    <div class="mb-3">
+        <label class="form-label">Archivo PDF (máx. 10 MB)</label>
+        <InputFile class="form-control" accept=".pdf,application/pdf" OnChange="SeleccionarPdf" />
+        @if (_editando && !string.IsNullOrEmpty(_model.ArchivoPdfUrl))
+        {
+            <small>Actual: <a href="@_model.ArchivoPdfUrl" target="_blank">ver PDF</a> (sube otro para reemplazarlo)</small>
+        }
+    </div>
+
+    <div>
+        <button class="btn btn-primary" type="submit">Guardar</button>
+        <button class="btn btn-secondary" type="button" @onclick="Nuevo">Cancelar</button>
+    </div>
+</EditForm>
+
+<table class="table table-striped">
+    <thead><tr><th>Título</th><th>Ponente</th><th>Categoría</th><th>Estado</th><th>PDF</th><th></th></tr></thead>
+    <tbody>
+        @foreach (var p in _lista)
+        {
+            <tr>
+                <td>@p.Titulo</td>
+                <td>@NombrePonente(p.IdPonente)</td>
+                <td>@p.Categoria</td>
+                <td>@p.Estado</td>
+                <td>
+                    @if (!string.IsNullOrEmpty(p.ArchivoPdfUrl))
+                    {
+                        <a href="@p.ArchivoPdfUrl" target="_blank">Ver</a>
+                    }
+                </td>
+                <td>
+                    <button class="btn btn-sm btn-outline-primary" @onclick="() => Editar(p)">Editar</button>
+                    <button class="btn btn-sm btn-outline-danger" @onclick="() => Eliminar(p)">Eliminar</button>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@code {
+    List<Ponencia> _lista = new();
+    List<Participante> _ponentes = new();
+    Ponencia _model = new();
+    IBrowserFile? _pdf;
+    bool _editando;
+    string? _error;
+
+    protected override async Task OnInitializedAsync() => await Cargar();
+
+    async Task Cargar()
+    {
+        _lista = await PonenciasSvc.GetAllAsync();
+        _ponentes = await PonentesSvc.GetAllAsync();
+    }
+
+    string NombrePonente(string idPonente)
+    {
+        var p = _ponentes.FirstOrDefault(x => x.Ponente?.IdPonente == idPonente);
+        return p is null ? idPonente : $"{p.Nombre} {p.Apellido_paterno}";
+    }
+
+    void Nuevo() { _model = new(); _pdf = null; _editando = false; _error = null; }
+
+    void Editar(Ponencia p)
+    {
+        _editando = true; _pdf = null; _error = null;
+        _model = new Ponencia
+        {
+            Id = p.Id,
+            IdPonente = p.IdPonente,
+            Titulo = p.Titulo,
+            Resumen = p.Resumen,
+            Categoria = p.Categoria,
+            ArchivoPdfUrl = p.ArchivoPdfUrl,
+            Estado = p.Estado
+        };
+    }
+
+    void SeleccionarPdf(InputFileChangeEventArgs e) => _pdf = e.File;
+
+    async Task Guardar()
+    {
+        try
+        {
+            string? anterior = null;
+            if (_pdf != null)
+            {
+                anterior = _model.ArchivoPdfUrl;
+                _model.ArchivoPdfUrl = await Pdfs.SaveAsync(_pdf);
+            }
+
+            if (_editando) await PonenciasSvc.UpdateAsync(_model);
+            else await PonenciasSvc.CreateAsync(_model);
+
+            Pdfs.Delete(anterior); 
+            Nuevo();
+            await Cargar();
+        }
+        catch (Exception ex) { _error = ex.Message; }
+    }
+
+    async Task Eliminar(Ponencia p)
+    {
+        try
+        {
+            await PonenciasSvc.DeleteAsync(p.Id, p.IdPonente);
+            Pdfs.Delete(p.ArchivoPdfUrl);
+            await Cargar();
+        }
+        catch (Exception ex) { _error = ex.Message; }
+    }
+}

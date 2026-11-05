@@ -86,6 +86,9 @@ builder.Services.AddScoped<IWeatherService, WeatherService>();
 builder.Services.AddScoped<IParticipantsService, ParticipantsService>();
 
 builder.Services.AddScoped<IParticipantesCrudService, ParticipantesCrudService>();
+builder.Services.AddScoped<IPonenciasCrudService, PonenciasCrudService>();
+builder.Services.AddScoped<IPonentesCrudService, PonentesCrudService>();
+builder.Services.AddScoped<IPdfStorageService, LocalPdfStorageService>();
 
 var app = builder.Build();
 

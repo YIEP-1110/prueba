@@ -1,0 +1,120 @@
+﻿@page "/ponentes"
+@rendermode InteractiveServer
+@using prueba.Data
+@using prueba.Services
+@inject IPonentesCrudService PonentesSvc
+
+<h3>Ponentes</h3>
+
+@if (_error != null)
+{
+    <div class="alert alert-danger">@_error</div>
+}
+
+<EditForm Model="_info" OnValidSubmit="Guardar" class="card card-body mb-4">
+    <h5>@(_editando ? "Editar ponente" : "Nuevo ponente")</h5>
+
+    <div class="mb-2">
+        <label class="form-label">Participante</label>
+        <select class="form-select" @bind="_participanteId" disabled="@_editando">
+            <option value="">-- Selecciona --</option>
+            @foreach (var c in _candidatos)
+            {
+                <option value="@c.Id">@c.Nombre @c.Apellido_paterno @c.Apellido_materno</option>
+            }
+        </select>
+    </div>
+    <div class="mb-2">
+        <label class="form-label">Especialidad</label>
+        <InputText class="form-control" @bind-Value="_info.Especialidad" />
+    </div>
+    <div class="mb-2">
+        <label class="form-label">Biografía</label>
+        <InputTextArea class="form-control" rows="3" @bind-Value="_info.Biografia" />
+    </div>
+    <div class="mb-2">
+        <label class="form-label">Foto (URL)</label>
+        <InputText class="form-control" @bind-Value="_info.FotoUrl" />
+    </div>
+
+    <div>
+        <button class="btn btn-primary" type="submit">Guardar</button>
+        <button class="btn btn-secondary" type="button" @onclick="Nuevo">Cancelar</button>
+    </div>
+</EditForm>
+
+<table class="table table-striped">
+    <thead><tr><th>Nombre</th><th>Institución</th><th>Especialidad</th><th></th></tr></thead>
+    <tbody>
+        @foreach (var p in _lista)
+        {
+            <tr>
+                <td>@p.Nombre @p.Apellido_paterno @p.Apellido_materno</td>
+                <td>@p.Institucion</td>
+                <td>@p.Ponente?.Especialidad</td>
+                <td>
+                    <button class="btn btn-sm btn-outline-primary" @onclick="() => Editar(p)">Editar</button>
+                    <button class="btn btn-sm btn-outline-danger" @onclick="() => Quitar(p)">Eliminar</button>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@code {
+    List<Participante> _lista = new(), _candidatos = new();
+    prueba.Data.PonenteInfo _info = new();
+    string _participanteId = "";
+    Participante? _actual;
+    bool _editando;
+    string? _error;
+
+    protected override async Task OnInitializedAsync() => await Cargar();
+
+    async Task Cargar()
+    {
+        _lista = await PonentesSvc.GetAllAsync();
+        _candidatos = await PonentesSvc.GetCandidatosAsync();
+    }
+
+    void Nuevo()
+    {
+        _info = new(); _participanteId = ""; _actual = null; _editando = false; _error = null;
+    }
+
+    void Editar(Participante p)
+    {
+        _actual = p; _editando = true; _participanteId = p.Id; _error = null;
+        _info = new PonenteInfo
+        {
+            IdPonente = p.Ponente!.IdPonente,
+            Especialidad = p.Ponente.Especialidad,
+            Biografia = p.Ponente.Biografia,
+            FotoUrl = p.Ponente.FotoUrl
+        };
+    }
+
+    async Task Guardar()
+    {
+        try
+        {
+            if (_editando && _actual != null)
+                await PonentesSvc.ActualizarAsync(_actual, _info);
+            else
+            {
+                var p = _candidatos.FirstOrDefault(c => c.Id == _participanteId);
+                if (p is null) { _error = "Selecciona un participante."; return; }
+                await PonentesSvc.AsignarAsync(p, _info);
+            }
+            Nuevo();
+            await Cargar();
+        }
+        catch (Exception ex) { _error = ex.Message; }
+    }
+
+    async Task Quitar(Participante p)
+    {
+        try { await PonentesSvc.QuitarAsync(p); _error = null; await Cargar(); }
+        catch (Exception ex) { _error = ex.Message; }
+    }
+}

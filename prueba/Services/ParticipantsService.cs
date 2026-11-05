@@ -7,7 +7,6 @@ namespace prueba.Services
 {
     public interface IParticipantsService
     {
-        // Return raw JSON documents from the Participantes container
         Task<string[]> GetParticipantesAsync();
     }
 

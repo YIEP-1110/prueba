@@ -14,4 +14,10 @@ public class Participante
     public string Telefono { get; set; } = "";
     public string Tipo_participacion { get; set; } = "Ponente";
     public bool Estado_registro { get; set; } = true;
+
+    [JsonProperty("institucion")]
+    public string Institucion { get; set; } = "";
+
+    [JsonProperty("ponente")]
+    public PonenteInfo? Ponente { get; set; }
 }
