@@ -1,0 +1,86 @@
+﻿@page "/pagos"
+@attribute [StreamRendering]
+@using prueba.Data
+@using prueba.Services
+@inject Microsoft.Extensions.Logging.ILogger<Pago> Logger
+
+<PageTitle>Pagos</PageTitle>
+
+<h3>Pagos</h3>
+
+<p>Pagos</p>
+
+@if (pagos == null)
+{
+    <p><em>Loading...</em></p>
+}
+else if (pagosError != null)
+{
+    <div class="alert alert-danger" role="alert">
+        <strong>Database error:</strong> @pagosError
+        <details>
+            <summary>Show details</summary>
+            <pre>@pagosErrorDetail</pre>
+        </details>
+    </div>
+}
+else if (!pagos.Any())
+{
+    <p><em>No actividades found.</em></p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Id</th>
+                <th>Id Participante</th>
+                <th>Id Ponencia</th>
+                <th>Monto</th>
+                <th>Metodo de Pago</th>
+                <th>Fecha de Pago</th>
+                <th>Estado de Pago</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var p in pagos)
+            {
+                <tr>
+                    <td>@p.IdActividad</td>
+                    <td>@(a.IdSala?.ToString() ?? "")</td>
+                    <td>@(a.IdPonencia?.ToString() ?? "")</td>
+                    <td>@a.Fecha.ToString("yyyy-MM-dd")</td>
+                    <td>@a.HoraInicio.ToString()</td>
+                    <td>@a.HoraFin.ToString()</td>
+                    <td>@a.TipoActividad</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+
+
+@code {
+    [Inject]
+    private IPagosService PagosService { get; set; } = null!;
+
+    private Pago[] pagos = Array.Empty<Pago>();
+    private string? pagosError;
+    private string? pagosErrorDetail;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            pagos = await PagosService.GetPagosAsync();
+        }
+        catch (Exception ex)
+        {
+            pagosError = ex.Message;
+            pagosErrorDetail = ex.ToString();
+            pagos = Array.Empty<Pago>();
+            Logger.LogError(ex, "Error fetching actividades in component");
+        }
+    }
+}
