@@ -1,44 +1,28 @@
-﻿using Microsoft.EntityFrameworkCore;
-using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
+﻿using Newtonsoft.Json;
 
+namespace prueba.Data;
 
-namespace prueba.Data
+public class Pago
 {
-    public class AppDbPagos : DbContext
-    {
-        public AppDbPagos(DbContextOptions<AppDbPagos> options) : base(options)
-        {
-        }
-        public DbSet<Pago> Pagos { get; set; } = null!;
+    [JsonProperty("id_pago")]
+    public int IdPago { get; set; }
 
-    }
-    [Table("Pagos")]
-    public class Pago
-    {
-        [Key]
-        [Column("Id_pago")]
-        public int IdPago { get; set; }
+    [JsonProperty("id_participante")]
+    public int IdParticipante { get; set; }
 
+    [JsonProperty("monto")]
+    public decimal Monto { get; set; }
 
-        [Column("Id_participante")]
-        public int IdParticipante { get; set; }
+    [JsonProperty("metodo_pago")]
+    public string MetodoPago { get; set; } = "";
 
-        [Column("monto")]
-        public decimal Monto { get; set; }
+    [JsonProperty("fecha_pago")]
+    public DateOnly FechaPago { get; set; }
 
-        [Column("metodo_pago")]
-        public string MetodoPago { get; set; } = null!;
+    [JsonProperty("estado")]
+    public bool Estado { get; set; }
 
-        [Column("fecha_pago")]
-        public DateOnly FechaPago { get; set; }
-
-        [Column("estado")]
-        public bool Estado { get; set; }
-
-        [Column("comprobante")]
-        public string Comprobante { get; set; } = null!;
-
-
-    }
+    [JsonProperty("comprobante")]
+    public string Comprobante { get; set; } = "";
 }
+    
