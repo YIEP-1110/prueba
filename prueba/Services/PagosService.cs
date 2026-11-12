@@ -1,6 +1,6 @@
-﻿using Microsoft.Azure.Cosmos;
+﻿using Microsoft.EntityFrameworkCore;
 using prueba.Data;
-
+using System.Security.Cryptography.X509Certificates;
 
 namespace prueba.Services;
 
