@@ -4,6 +4,9 @@ namespace prueba.Data;
 
 public class Pago
 {
+    [JsonProperty("id")]
+    public string Id { get; set; } = Guid.NewGuid().ToString();
+
     [JsonProperty("id_pago")]
     public int IdPago { get; set; }
 
