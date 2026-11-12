@@ -1,0 +1,146 @@
+﻿@page "/admin/ponencias"
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Authorization
+@using prueba.Data
+@using prueba.Services
+@attribute [Authorize(Roles = "administrador")]
+@inject IPonenciasCrudService PonenciasSvc
+@inject IPonentesCrudService PonentesSvc
+
+<h3>Revisión de ponencias</h3>
+
+@if (_error != null)
+{
+    <div class="alert alert-danger">@_error</div>
+}
+@if (_mensaje != null)
+{
+    <div class="alert alert-success">@_mensaje</div>
+}
+
+<div class="mb-3">
+    <button class="btn @(_filtro == "" ? "btn-dark" : "btn-outline-dark")" @onclick='() => Filtrar("")'>
+        Todas (@_todas.Count)
+    </button>
+    @foreach (var e in EstadoPonencia.Todos)
+    {
+        var estado = e;
+        <button class="btn @(_filtro == estado ? "btn-dark" : "btn-outline-dark")" @onclick="() => Filtrar(estado)">
+            @EstadoPonencia.Etiqueta(estado) (@_todas.Count(p => p.Estado == estado))
+        </button>
+    }
+</div>
+
+@if (_rechazando != null)
+{
+    <div class="card card-body mb-3 border-danger">
+        <h5>Rechazar: @_rechazando.Titulo</h5>
+        <label class="form-label">Motivo del rechazo (lo verá el ponente)</label>
+        <textarea class="form-control mb-2" rows="3" @bind="_motivo"></textarea>
+        <div>
+            <button class="btn btn-danger" @onclick="ConfirmarRechazo">Confirmar rechazo</button>
+            <button class="btn btn-secondary" @onclick="() => _rechazando = null">Cancelar</button>
+        </div>
+    </div>
+}
+
+<table class="table table-striped align-middle">
+    <thead>
+        <tr><th>Título</th><th>Ponente</th><th>Categoría</th><th>Registrada</th><th>PDF</th><th>Estado</th><th></th></tr>
+    </thead>
+    <tbody>
+        @foreach (var p in _lista)
+        {
+            <tr>
+                <td>
+                    @p.Titulo
+                    @if (!string.IsNullOrWhiteSpace(p.Resumen))
+                    {
+                        <details><summary class="small text-muted">Ver resumen</summary>@p.Resumen</details>
+                    }
+                </td>
+                <td>@NombrePonente(p.IdPonente)</td>
+                <td>@p.Categoria</td>
+                <td>@p.FechaRegistro.ToLocalTime().ToString("dd/MM/yyyy")</td>
+                <td>@if (!string.IsNullOrEmpty(p.ArchivoPdfUrl)) {
+                    <a href="@p.ArchivoPdfUrl" target="_blank">Ver PDF</a>
+                }
+            </td>
+            <td>
+                <span class="badge @EstadoPonencia.Badge(p.Estado)">@EstadoPonencia.Etiqueta(p.Estado)</span>
+                @if (!string.IsNullOrEmpty(p.Observaciones))
+                {
+                    <div class="small text-muted">@p.Observaciones</div>
+                }
+            </td>
+            <td>
+                @if (p.Estado != EstadoPonencia.Aceptada)
+                {
+                    <button class="btn btn-sm btn-success" @onclick="() => Aceptar(p)">Aceptar</button>
+                }
+                @if (p.Estado != EstadoPonencia.Rechazada)
+                {
+                    <button class="btn btn-sm btn-danger" @onclick="() => IniciarRechazo(p)">Rechazar</button>
+                }
+            </td>
+        </tr>
+    }
+</tbody>
+</table>
+
+@code {
+    List<Ponencia> _todas = new(), _lista = new();
+    List<Participante> _ponentes = new();
+    string _filtro = "";
+    Ponencia? _rechazando;
+    string _motivo = "";
+    string? _error, _mensaje;
+
+    protected override async Task OnInitializedAsync() => await Cargar();
+
+    async Task Cargar()
+    {
+        _todas = await PonenciasSvc.GetAllAsync();
+        _ponentes = await PonentesSvc.GetAllAsync();
+        Aplicar();
+    }
+
+    void Aplicar() =>
+        _lista = string.IsNullOrEmpty(_filtro) ? _todas : _todas.Where(p => p.Estado == _filtro).ToList();
+
+    void Filtrar(string estado) { _filtro = estado; Aplicar(); }
+
+    string NombrePonente(string idPonente)
+    {
+        var p = _ponentes.FirstOrDefault(x => x.Ponente?.IdPonente == idPonente);
+        return p is null ? idPonente : $"{p.Nombre} {p.Apellido_paterno}";
+    }
+
+    async Task Aceptar(Ponencia p)
+    {
+        _error = null; _mensaje = null;
+        try
+        {
+            await PonenciasSvc.CambiarEstadoAsync(p.Id, p.IdPonente, EstadoPonencia.Aceptada, "");
+            _mensaje = $"«{p.Titulo}» aceptada.";
+            await Cargar();
+        }
+        catch (Exception ex) { _error = ex.Message; }
+    }
+
+    void IniciarRechazo(Ponencia p) { _rechazando = p; _motivo = ""; _error = null; _mensaje = null; }
+
+    async Task ConfirmarRechazo()
+    {
+        if (_rechazando is null) return;
+        try
+        {
+            await PonenciasSvc.CambiarEstadoAsync(_rechazando.Id, _rechazando.IdPonente,
+                EstadoPonencia.Rechazada, _motivo);
+            _mensaje = $"«{_rechazando.Titulo}» rechazada.";
+            _rechazando = null;
+            await Cargar();
+        }
+        catch (Exception ex) { _error = ex.Message; }
+    }
+}

@@ -1,0 +1,84 @@
+﻿@page "/mis-ponencias"
+@rendermode InteractiveServer
+@using prueba.Data
+@using prueba.Services
+@inject IPonenciasCrudService PonenciasSvc
+@inject IPonentesCrudService PonentesSvc
+@inject IPonenteActualService PonenteActualSvc
+
+<h3>Consulta de ponencias</h3>
+<p class="text-muted">Aquí puedes verificar en qué estado está cada ponencia que registraste.</p>
+
+@if (_ponenteActual is null)
+{
+    <div class="card card-body mb-3">
+        <label class="form-label">Ponente <small class="text-muted">(modo prueba: sin sesión de ponente)</small></label>
+        <select class="form-select" @bind="_idSel" @bind:after="Cargar">
+            <option value="">-- Selecciona --</option>
+            @foreach (var p in _ponentes)
+            {
+                <option value="@p.Ponente!.IdPonente">@p.Nombre @p.Apellido_paterno</option>
+            }
+        </select>
+    </div>
+}
+else
+{
+    <p>Ponente: <strong>@_ponenteActual.Nombre @_ponenteActual.Apellido_paterno</strong></p>
+}
+
+<button class="btn btn-outline-secondary mb-3" @onclick="Cargar">Actualizar</button>
+<a class="btn btn-primary mb-3" href="/ponencias">Registrar nueva ponencia</a>
+
+@if (!_lista.Any())
+{
+    <p>No hay ponencias registradas.</p>
+}
+else
+{
+    <table class="table table-striped align-middle">
+        <thead>
+            <tr><th>Título</th><th>Categoría</th><th>Registrada</th><th>Estado</th><th>Revisada</th><th>Observaciones</th><th>PDF</th></tr>
+        </thead>
+        <tbody>
+            @foreach (var p in _lista)
+            {
+                <tr>
+                    <td>@p.Titulo</td>
+                    <td>@p.Categoria</td>
+                    <td>@p.FechaRegistro.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
+                    <td><span class="badge @EstadoPonencia.Badge(p.Estado)">@EstadoPonencia.Etiqueta(p.Estado)</span></td>
+                    <td>@(p.FechaRevision?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "En espera de revisión")</td>
+                    <td>@p.Observaciones</td>
+                    <td>@if (!string.IsNullOrEmpty(p.ArchivoPdfUrl)) {
+                        <a href="@p.ArchivoPdfUrl" target="_blank">Ver</a>
+                    }
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+}
+
+@code {
+    List<Ponencia> _lista = new();
+    List<Participante> _ponentes = new();
+    Participante? _ponenteActual;
+    string _idSel = "";
+
+    string? IdPonenteActivo =>
+        _ponenteActual?.Ponente?.IdPonente ?? (string.IsNullOrEmpty(_idSel) ? null : _idSel);
+
+    protected override async Task OnInitializedAsync()
+    {
+        _ponenteActual = await PonenteActualSvc.GetAsync();
+        _ponentes = await PonentesSvc.GetAllAsync();
+        await Cargar();
+    }
+
+    async Task Cargar() =>
+        _lista = IdPonenteActivo is null
+            ? new()
+            : (await PonenciasSvc.GetByPonenteAsync(IdPonenteActivo))
+                .OrderByDescending(p => p.FechaRegistro).ToList();
+}

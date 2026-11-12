@@ -5,13 +5,38 @@
 @using prueba.Services
 @inject IPonenciasCrudService PonenciasSvc
 @inject IPonentesCrudService PonentesSvc
+@inject IPonenteActualService PonenteActualSvc
 @inject IPdfStorageService Pdfs
 
-<h3>Ponencias</h3>
+<h3>Registrar ponencia</h3>
 
 @if (_error != null)
 {
     <div class="alert alert-danger">@_error</div>
+}
+@if (_mensaje != null)
+{
+    <div class="alert alert-success">
+        @_mensaje <a href="/mis-ponencias">Consultar estado de mis ponencias</a>
+    </div>
+}
+
+@if (_ponenteActual is null)
+{
+    <div class="card card-body mb-3">
+        <label class="form-label">Ponente <small class="text-muted">(modo prueba: sin sesión de ponente)</small></label>
+        <select class="form-select" @bind="_idSel" @bind:after="CargarPonencias">
+            <option value="">-- Selecciona --</option>
+            @foreach (var p in _ponentes)
+            {
+                <option value="@p.Ponente!.IdPonente">@p.Nombre @p.Apellido_paterno</option>
+            }
+        </select>
+    </div>
+}
+else
+{
+    <p>Ponente: <strong>@_ponenteActual.Nombre @_ponenteActual.Apellido_paterno</strong></p>
 }
 
 <EditForm Model="_model" OnValidSubmit="Guardar" class="card card-body mb-4">
@@ -19,16 +44,6 @@
     <ValidationSummary />
     <h5>@(_editando ? "Editar ponencia" : "Nueva ponencia")</h5>
 
-    <div class="mb-2">
-        <label class="form-label">Ponente</label>
-        <InputSelect class="form-select" @bind-Value="_model.IdPonente" disabled="@_editando">
-            <option value="">-- Selecciona --</option>
-            @foreach (var p in _ponentes)
-            {
-                <option value="@p.Ponente!.IdPonente">@p.Nombre @p.Apellido_paterno</option>
-            }
-        </InputSelect>
-    </div>
     <div class="mb-2">
         <label class="form-label">Título</label>
         <InputText class="form-control" @bind-Value="_model.Titulo" />
@@ -38,16 +53,8 @@
         <InputTextArea class="form-control" rows="3" @bind-Value="_model.Resumen" />
     </div>
     <div class="mb-2">
-        <label class="form-label">Categoría</label>
+        <label class="form-label">Categoría / área temática</label>
         <InputText class="form-control" @bind-Value="_model.Categoria" />
-    </div>
-    <div class="mb-2">
-        <label class="form-label">Estado</label>
-        <InputSelect class="form-select" @bind-Value="_model.Estado">
-            <option value="pendiente">Pendiente</option>
-            <option value="aceptada">Aceptada</option>
-            <option value="rechazada">Rechazada</option>
-        </InputSelect>
     </div>
     <div class="mb-3">
         <label class="form-label">Archivo PDF (máx. 10 MB)</label>
@@ -59,63 +66,69 @@
     </div>
 
     <div>
-        <button class="btn btn-primary" type="submit">Guardar</button>
+        <button class="btn btn-primary" type="submit">@(_editando ? "Guardar cambios" : "Registrar ponencia")</button>
         <button class="btn btn-secondary" type="button" @onclick="Nuevo">Cancelar</button>
     </div>
 </EditForm>
 
+<h5>Mis ponencias registradas</h5>
 <table class="table table-striped">
-    <thead><tr><th>Título</th><th>Ponente</th><th>Categoría</th><th>Estado</th><th>PDF</th><th></th></tr></thead>
+    <thead><tr><th>Título</th><th>Categoría</th><th>Estado</th><th>PDF</th><th></th></tr></thead>
     <tbody>
         @foreach (var p in _lista)
         {
             <tr>
                 <td>@p.Titulo</td>
-                <td>@NombrePonente(p.IdPonente)</td>
                 <td>@p.Categoria</td>
-                <td>@p.Estado</td>
-                <td>
-                    @if (!string.IsNullOrEmpty(p.ArchivoPdfUrl))
-                    {
-                        <a href="@p.ArchivoPdfUrl" target="_blank">Ver</a>
-                    }
-                </td>
-                <td>
+                <td><span class="badge @EstadoPonencia.Badge(p.Estado)">@EstadoPonencia.Etiqueta(p.Estado)</span></td>
+                <td>@if (!string.IsNullOrEmpty(p.ArchivoPdfUrl)) {
+                    <a href="@p.ArchivoPdfUrl" target="_blank">Ver</a>
+                }
+            </td>
+            <td>
+                @if (p.Estado == EstadoPonencia.Recibida)
+                {
                     <button class="btn btn-sm btn-outline-primary" @onclick="() => Editar(p)">Editar</button>
                     <button class="btn btn-sm btn-outline-danger" @onclick="() => Eliminar(p)">Eliminar</button>
-                </td>
-            </tr>
-        }
-    </tbody>
+                }
+                else
+                {
+                    <small class="text-muted">Bloqueada (ya revisada)</small>
+                }
+            </td>
+        </tr>
+    }
+</tbody>
 </table>
 
 @code {
     List<Ponencia> _lista = new();
     List<Participante> _ponentes = new();
+    Participante? _ponenteActual;
+    string _idSel = "";
     Ponencia _model = new();
     IBrowserFile? _pdf;
     bool _editando;
-    string? _error;
+    string? _error, _mensaje;
 
-    protected override async Task OnInitializedAsync() => await Cargar();
+    string? IdPonenteActivo =>
+        _ponenteActual?.Ponente?.IdPonente ?? (string.IsNullOrEmpty(_idSel) ? null : _idSel);
 
-    async Task Cargar()
+    protected override async Task OnInitializedAsync()
     {
-        _lista = await PonenciasSvc.GetAllAsync();
+        _ponenteActual = await PonenteActualSvc.GetAsync();
         _ponentes = await PonentesSvc.GetAllAsync();
+        await CargarPonencias();
     }
 
-    string NombrePonente(string idPonente)
-    {
-        var p = _ponentes.FirstOrDefault(x => x.Ponente?.IdPonente == idPonente);
-        return p is null ? idPonente : $"{p.Nombre} {p.Apellido_paterno}";
-    }
+    async Task CargarPonencias() =>
+        _lista = IdPonenteActivo is null ? new() : await PonenciasSvc.GetByPonenteAsync(IdPonenteActivo);
 
     void Nuevo() { _model = new(); _pdf = null; _editando = false; _error = null; }
 
     void Editar(Ponencia p)
     {
-        _editando = true; _pdf = null; _error = null;
+        _editando = true; _pdf = null; _error = null; _mensaje = null;
         _model = new Ponencia
         {
             Id = p.Id,
@@ -132,23 +145,37 @@
 
     async Task Guardar()
     {
+        _error = null; _mensaje = null;
+        string? anterior = null, nuevoPdf = null;
         try
         {
-            string? anterior = null;
+            if (IdPonenteActivo is null) { _error = "Selecciona un ponente."; return; }
+            if (!_editando && _pdf is null) { _error = "Adjunta el archivo PDF de la ponencia."; return; }
+
+            _model.IdPonente = IdPonenteActivo;
+
             if (_pdf != null)
             {
                 anterior = _model.ArchivoPdfUrl;
-                _model.ArchivoPdfUrl = await Pdfs.SaveAsync(_pdf);
+                nuevoPdf = await Pdfs.SaveAsync(_pdf);
+                _model.ArchivoPdfUrl = nuevoPdf;
             }
 
-            if (_editando) await PonenciasSvc.UpdateAsync(_model);
-            else await PonenciasSvc.CreateAsync(_model);
+            if (_editando) await PonenciasSvc.ActualizarDatosAsync(_model);
+            else await PonenciasSvc.RegistrarAsync(_model);
 
-            Pdfs.Delete(anterior); 
+            Pdfs.Delete(anterior);
+            _mensaje = _editando
+                ? "Cambios guardados."
+                : "Ponencia registrada con estado «Recibida». Quedó pendiente de revisión del administrador.";
             Nuevo();
-            await Cargar();
+            await CargarPonencias();
         }
-        catch (Exception ex) { _error = ex.Message; }
+        catch (Exception ex)
+        {
+            if (nuevoPdf != null) { Pdfs.Delete(nuevoPdf); _model.ArchivoPdfUrl = anterior ?? ""; }
+            _error = ex.Message;
+        }
     }
 
     async Task Eliminar(Ponencia p)
@@ -157,7 +184,7 @@
         {
             await PonenciasSvc.DeleteAsync(p.Id, p.IdPonente);
             Pdfs.Delete(p.ArchivoPdfUrl);
-            await Cargar();
+            await CargarPonencias();
         }
         catch (Exception ex) { _error = ex.Message; }
     }

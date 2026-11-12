@@ -62,6 +62,8 @@ builder.Services.AddScoped<IParticipantesCrudService, ParticipantesCrudService>(
 builder.Services.AddScoped<IPonenciasCrudService, PonenciasCrudService>();
 builder.Services.AddScoped<IPonentesCrudService, PonentesCrudService>();
 builder.Services.AddScoped<IPdfStorageService, LocalPdfStorageService>();
+builder.Services.AddScoped<IPonenteActualService, PonenteActualService>();  
+builder.Services.AddCascadingAuthenticationState();
 
 var app = builder.Build();
 
