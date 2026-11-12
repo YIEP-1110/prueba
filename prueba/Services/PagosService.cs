@@ -4,9 +4,9 @@ using System.Security.Cryptography.X509Certificates;
 
 namespace prueba.Services;
 
-public interface  IPagosService
+public interface IPagosService
 {
-    Task<List<Pago>> GetAllAsync();
+    Task<Pago[]> GetPagosAsync();
 }
 
 public class PagosService : IPagosService
