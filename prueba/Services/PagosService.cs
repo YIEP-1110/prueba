@@ -11,10 +11,10 @@ public interface IPagosService
 
 public class PagosService : IPagosService
 {
-    private readonly AppDbPagos _db;
+    private readonly Pago _db;
     private readonly ILogger<PagosService> _logger;
 
-    public PagosService(AppDbPagos db, ILogger<PagosService> logger)
+    public PagosService(Pago db, ILogger<PagosService> logger)
     {
         _db = db;
         _logger = logger;
