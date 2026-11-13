@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Azure.Cosmos;
 using prueba.Components;
 using prueba.Data;
 using prueba.Services;
@@ -24,6 +25,13 @@ builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"));
 });
 
+var cosmosEndpoint = builder.Configuration["CosmosDb:Endpoint"]
+    ?? throw new InvalidOperationException("Falta la configuración CosmosDb:Endpoint.");
+var cosmosKey = builder.Configuration["CosmosDb:Key"]
+    ?? throw new InvalidOperationException("Falta la configuración CosmosDb:Key.");
+
+builder.Services.AddSingleton(new CosmosClient(cosmosEndpoint, cosmosKey));
+builder.Services.AddScoped<IPagosService, PagosService>();
 builder.Services.AddScoped<IWeatherService, WeatherService>();
 
 var app = builder.Build();

@@ -8,9 +8,48 @@
 
 <h3>Pagos</h3>
 
-<p>Pagos</p>
+<EditForm Model="nuevoPago" OnValidSubmit="RegistrarPagoAsync">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
 
-@if (pagos == null)
+    <div class="row g-3 mb-4">
+        <div class="col-md-4">
+            <label class="form-label" for="idParticipante">Id participante</label>
+            <InputNumber id="idParticipante" class="form-control" @bind-Value="nuevoPago.IdParticipante" />
+        </div>
+        <div class="col-md-4">
+            <label class="form-label" for="monto">Monto</label>
+            <InputNumber id="monto" class="form-control" @bind-Value="nuevoPago.Monto" />
+        </div>
+        <div class="col-md-4">
+            <label class="form-label" for="fechaPago">Fecha de pago</label>
+            <InputDate id="fechaPago" class="form-control" @bind-Value="nuevoPago.FechaPago" />
+        </div>
+        <div class="col-md-6">
+            <label class="form-label" for="metodoPago">Método de pago</label>
+            <InputText id="metodoPago" class="form-control" @bind-Value="nuevoPago.MetodoPago" />
+        </div>
+        <div class="col-md-6">
+            <label class="form-label" for="comprobante">Comprobante</label>
+            <InputText id="comprobante" class="form-control" @bind-Value="nuevoPago.Comprobante" />
+        </div>
+        <div class="col-md-6 form-check ms-2">
+            <InputCheckbox id="estado" class="form-check-input" @bind-Value="nuevoPago.Estado" />
+            <label class="form-check-label" for="estado">Pago realizado</label>
+        </div>
+    </div>
+
+    <button class="btn btn-primary mb-4" type="submit" disabled="@guardando">
+        @(guardando ? "Guardando..." : "Registrar pago")
+    </button>
+</EditForm>
+
+@if (!string.IsNullOrWhiteSpace(mensaje))
+{
+    <div class="alert alert-success">@mensaje</div>
+}
+
+@if (cargando)
 {
     <p><em>Loading...</em></p>
 }
@@ -66,6 +105,10 @@ else
     private IPagosService PagosService { get; set; } = null!;
 
     private Pago[] pagos = Array.Empty<Pago>();
+    private Pago nuevoPago = CrearPagoNuevo();
+    private bool cargando = true;
+    private bool guardando;
+    private string? mensaje;
     private string? pagosError;
     private string? pagosErrorDetail;
 
@@ -82,5 +125,39 @@ else
             pagos = Array.Empty<Pago>();
             Logger.LogError(ex, "Error fetching pagos in component");
         }
+        finally
+        {
+            cargando = false;
+        }
     }
+
+    private async Task RegistrarPagoAsync()
+    {
+        guardando = true;
+        pagosError = null;
+        mensaje = null;
+
+        try
+        {
+            await PagosService.RegistrarPagoAsync(nuevoPago);
+            pagos = await PagosService.GetPagosAsync();
+            nuevoPago = CrearPagoNuevo();
+            mensaje = "El pago se registró correctamente.";
+        }
+        catch (Exception ex)
+        {
+            pagosError = "No se pudo registrar el pago.";
+            pagosErrorDetail = ex.ToString();
+            Logger.LogError(ex, "Error registering payment in Cosmos DB");
+        }
+        finally
+        {
+            guardando = false;
+        }
+    }
+
+    private static Pago CrearPagoNuevo() => new()
+    {
+        FechaPago = DateOnly.FromDateTime(DateTime.Today)
+    };
 }

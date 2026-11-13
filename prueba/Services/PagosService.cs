@@ -1,46 +1,52 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.Azure.Cosmos;
 using prueba.Data;
-using System.ComponentModel;
-using System.Security.Cryptography.X509Certificates;
+
 
 namespace prueba.Services;
 
 public interface IPagosService
 {
     Task<Pago[]> GetPagosAsync();
+    Task<Pago> RegistrarPagoAsync(Pago pago);
 }
 
 public class PagosService : IPagosService
 {
     private readonly Container _container;
 
-    //public PagosService(CosmosClient client, IConfiguration config)
-    //{
-    //    var db = config["ConnectionStrings2:CosmosDb_Database"];
-    //    var cont = config["ConnectionStrings2:CosmosDb_Container_Pagos"];
-    //    _container = client.GetContainer(db, cont);
-    //}
-
-    private readonly Pago _db;
-    private readonly ILogger<PagosService> _logger;
-
-    public PagosService(Pago db, ILogger<PagosService> logger)
+    public PagosService(CosmosClient client, IConfiguration config)
     {
-        _db = db;
-        _logger = logger;
+        var database = config["CosmosDb:Database"]
+            ?? throw new InvalidOperationException("Falta la configuración CosmosDb:Database.");
+        var container = config["CosmosDb:ContainerPagos"]
+            ?? throw new InvalidOperationException("Falta la configuración CosmosDb:ContainerPagos.");
+
+        _container = client.GetContainer(database, container);
     }
+
     public async Task<Pago[]> GetPagosAsync()
     {
-        try
+        var pagos = new List<Pago>();
+        using var iterator = _container.GetItemQueryIterator<Pago>(
+            new QueryDefinition("SELECT * FROM c"));
+
+        while (iterator.HasMoreResults)
         {
-            return await Microsoft.EntityFrameworkCore.RelationalQueryableExtensions
-                .FromSqlRaw(_db.Pagos, "SELECT * FROM dbo.Pagos")
-                .ToArrayAsync();
+            var response = await iterator.ReadNextAsync();
+            pagos.AddRange(response);
         }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error executing SELECT * FROM dbo.Pagos");
-            throw;
-        }
+
+        return pagos.ToArray();
+    }
+
+    public async Task<Pago> RegistrarPagoAsync(Pago pago)
+    {
+        pago.Id = Guid.NewGuid().ToString();
+
+        var response = await _container.CreateItemAsync(
+            pago,
+            new PartitionKey(pago.Id));
+
+        return response.Resource;
     }
 }
