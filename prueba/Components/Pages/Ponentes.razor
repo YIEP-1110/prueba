@@ -1,5 +1,6 @@
 ﻿@page "/ponentes"
 @rendermode InteractiveServer
+@attribute [Authorize(Roles = "administrador")]
 @using prueba.Data
 @using prueba.Services
 @inject IPonentesCrudService PonentesSvc
@@ -84,10 +85,16 @@
 
     void Editar(Participante p)
     {
-        _actual = p; _editando = true; _participanteId = p.Id; _error = null;
-        _info = new PonenteInfo
+        if (p.Ponente is null)
         {
-            IdPonente = p.Ponente!.IdPonente,
+            _error = "El participante no contiene información de ponente.";
+            return;
+        }
+
+        _actual = p; _editando = true; _participanteId = p.Id; _error = null;
+        _info = new prueba.Data.PonenteInfo
+        {
+            IdPonente = p.Ponente.IdPonente,
             Especialidad = p.Ponente.Especialidad,
             Biografia = p.Ponente.Biografia,
             FotoUrl = p.Ponente.FotoUrl

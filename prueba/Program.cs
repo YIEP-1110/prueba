@@ -1,4 +1,8 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Antiforgery;
+using System.Security.Claims;
 using prueba.Components;
 using prueba.Configuration;
 using prueba.Data;
@@ -12,6 +16,16 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
+
+builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+    .AddCookie(options =>
+    {
+        options.LoginPath = "/login";
+        options.AccessDeniedPath = "/acceso-denegado";
+        options.SlidingExpiration = true;
+        options.ExpireTimeSpan = TimeSpan.FromHours(8);
+    });
+builder.Services.AddAuthorization();
 
 // Configure logging to console so logs are visible in the terminal / VS Output
 builder.Logging.ClearProviders();
@@ -61,6 +75,7 @@ if (!string.IsNullOrWhiteSpace(cosmosConn))
 builder.Services.AddScoped<IParticipantesCrudService, ParticipantesCrudService>();
 builder.Services.AddScoped<IPonenciasCrudService, PonenciasCrudService>();
 builder.Services.AddScoped<IPonentesCrudService, PonentesCrudService>();
+builder.Services.AddScoped<IUsuariosService, UsuariosService>();
 builder.Services.AddScoped<IPdfStorageService, LocalPdfStorageService>();
 builder.Services.AddScoped<IPonenteActualService, PonenteActualService>();  
 builder.Services.AddCascadingAuthenticationState();
@@ -77,9 +92,58 @@ if (!app.Environment.IsDevelopment())
 app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
 app.UseHttpsRedirection();
 
+app.UseAuthentication();
+app.UseAuthorization();
 app.UseAntiforgery();
 
 app.MapStaticAssets();
+
+app.MapPost("/account/login", async (HttpRequest request, IUsuariosService usuarios, HttpContext http, IAntiforgery antiforgery) =>
+{
+    await antiforgery.ValidateRequestAsync(http);
+    var form = await request.ReadFormAsync();
+    var correo = form["correo"].ToString();
+    var contraseña = form["contraseña"].ToString();
+    var resultado = await usuarios.AutenticarAsync(correo, contraseña);
+
+    if (!resultado.Correcta || resultado.Usuario is null)
+        return Results.Redirect($"/login?error={Uri.EscapeDataString("Correo o contraseña incorrectos.")}");
+
+    var usuario = resultado.Usuario;
+    var claims = new List<Claim>
+    {
+        new(ClaimTypes.NameIdentifier, usuario.IdUsuario),
+        new(ClaimTypes.Name, usuario.Correo),
+        new(ClaimTypes.Email, usuario.Correo),
+        new(ClaimTypes.Role, usuario.Rol.Tipo)
+    };
+    await http.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme,
+        new ClaimsPrincipal(new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme)),
+        new AuthenticationProperties { IsPersistent = true });
+
+    return Results.Redirect("/");
+});
+
+app.MapPost("/account/register", async (HttpRequest request, IUsuariosService usuarios, HttpContext http, IAntiforgery antiforgery) =>
+{
+    await antiforgery.ValidateRequestAsync(http);
+    var form = await request.ReadFormAsync();
+    var resultado = await usuarios.RegistrarParticipanteAsync(
+        form["correo"].ToString(), form["contraseña"].ToString());
+
+    if (!resultado.Creado)
+        return Results.Redirect($"/registro?error={Uri.EscapeDataString(resultado.Error ?? "No se pudo completar el registro.")}");
+
+    return Results.Redirect("/login?registro=true");
+});
+
+app.MapPost("/account/logout", async (HttpContext http, IAntiforgery antiforgery) =>
+{
+    await antiforgery.ValidateRequestAsync(http);
+    await http.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+    return Results.Redirect("/");
+});
+
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 
