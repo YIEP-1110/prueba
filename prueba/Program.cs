@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Azure.Cosmos;
 using prueba.Components;
-using prueba.Configuration;
 using prueba.Data;
 using prueba.Services;
 
@@ -19,51 +19,20 @@ builder.Logging.AddConsole();
 builder.Logging.SetMinimumLevel(Microsoft.Extensions.Logging.LogLevel.Information);
 
 // Register EF Core DbContext and application services
-// Bind Cosmos settings to a typed options class from the ConnectionStrings2 section
-builder.Services.Configure<CosmosSettings>(builder.Configuration.GetSection("ConnectionStrings2"));
-
-// Register two DbContext implementations:
-// - AppDbContext is implemented by SqlAppDbContext (default for existing code)
-// - CosmosAppDbContext is available when you need to work with Cosmos-specific features
-var cosmosSettings = builder.Configuration.GetSection("ConnectionStrings2").Get<CosmosSettings>();
-var cosmosConn = cosmosSettings?.CosmosDb;
-var cosmosDbName = cosmosSettings?.CosmosDb_Database;
-
-// Pagos usa SQL Server y debe registrarse con el mismo tipo que inyecta
-// PagosService. Sin este registro, el contenedor no puede construirlo.
-builder.Services.AddDbContext<AppDbPagos>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
-
-// Register CosmosClient for direct SDK access (used by ParticipantsService)
-if (!string.IsNullOrWhiteSpace(cosmosConn))
+builder.Services.AddDbContext<AppDbContext>(options =>
 {
-    string? endpoint = null;
-    string? key = null;
-    foreach (var part in cosmosConn.Split(';', StringSplitOptions.RemoveEmptyEntries))
-    {
-        var kv = part.Split('=', 2);
-        if (kv.Length != 2) continue;
-        var k = kv[0].Trim();
-        var v = kv[1].Trim();
-        if (k.Equals("AccountEndpoint", StringComparison.OrdinalIgnoreCase)) endpoint = v;
-        if (k.Equals("AccountKey", StringComparison.OrdinalIgnoreCase)) key = v;
-    }
+    // Uses the DefaultConnection value from appsettings.json. Keep it empty for now as requested.
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"));
+});
 
-    if (!string.IsNullOrWhiteSpace(endpoint) && !string.IsNullOrWhiteSpace(key)
-        && !string.IsNullOrWhiteSpace(cosmosDbName))
-    {
-        builder.Services.AddSingleton(new Microsoft.Azure.Cosmos.CosmosClient(endpoint, key));
+var cosmosEndpoint = builder.Configuration["CosmosDb:Endpoint"]
+    ?? throw new InvalidOperationException("Falta la configuración CosmosDb:Endpoint.");
+var cosmosKey = builder.Configuration["CosmosDb:Key"]
+    ?? throw new InvalidOperationException("Falta la configuración CosmosDb:Key.");
 
-        // Estos servicios dependen de CosmosClient; no se registran si Cosmos
-        // no está configurado para evitar dependencias imposibles de resolver.
-        builder.Services.AddScoped<IParticipantesCrudService, ParticipantesCrudService>();
-        builder.Services.AddScoped<IPonenciasCrudService, PonenciasCrudService>();
-        builder.Services.AddScoped<IPonentesCrudService, PonentesCrudService>();
-    }
-}
-
+builder.Services.AddSingleton(new CosmosClient(cosmosEndpoint, cosmosKey));
 builder.Services.AddScoped<IPagosService, PagosService>();
-builder.Services.AddScoped<IPdfStorageService, LocalPdfStorageService>();
+builder.Services.AddScoped<IWeatherService, WeatherService>();
 
 var app = builder.Build();
 
