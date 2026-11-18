@@ -1,52 +1,46 @@
-﻿using Microsoft.Azure.Cosmos;
+﻿using Microsoft.EntityFrameworkCore;
 using prueba.Data;
-
+using System.ComponentModel;
+using System.Security.Cryptography.X509Certificates;
 
 namespace prueba.Services;
 
 public interface IPagosService
 {
     Task<Pago[]> GetPagosAsync();
-    Task<Pago> RegistrarPagoAsync(Pago pago);
 }
 
 public class PagosService : IPagosService
 {
     private readonly Container _container;
 
-    public PagosService(CosmosClient client, IConfiguration config)
+    //public PagosService(CosmosClient client, IConfiguration config)
+    //{
+    //    var db = config["ConnectionStrings2:CosmosDb_Database"];
+    //    var cont = config["ConnectionStrings2:CosmosDb_Container_Pagos"];
+    //    _container = client.GetContainer(db, cont);
+    //}
+
+    private readonly Pago _db;
+    private readonly ILogger<PagosService> _logger;
+
+    public PagosService(Pago db, ILogger<PagosService> logger)
     {
-        var database = config["CosmosDb:Database"]
-            ?? throw new InvalidOperationException("Falta la configuración CosmosDb:Database.");
-        var container = config["CosmosDb:ContainerPagos"]
-            ?? throw new InvalidOperationException("Falta la configuración CosmosDb:ContainerPagos.");
-
-        _container = client.GetContainer(database, container);
+        _db = db;
+        _logger = logger;
     }
-
     public async Task<Pago[]> GetPagosAsync()
     {
-        var pagos = new List<Pago>();
-        using var iterator = _container.GetItemQueryIterator<Pago>(
-            new QueryDefinition("SELECT * FROM c"));
-
-        while (iterator.HasMoreResults)
+        try
         {
-            var response = await iterator.ReadNextAsync();
-            pagos.AddRange(response);
+            return await Microsoft.EntityFrameworkCore.RelationalQueryableExtensions
+                .FromSqlRaw(_db.Pagos, "SELECT * FROM dbo.Pagos")
+                .ToArrayAsync();
         }
-
-        return pagos.ToArray();
-    }
-
-    public async Task<Pago> RegistrarPagoAsync(Pago pago)
-    {
-        pago.Id = Guid.NewGuid().ToString();
-
-        var response = await _container.CreateItemAsync(
-            pago,
-            new PartitionKey(pago.Id));
-
-        return response.Resource;
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error executing SELECT * FROM dbo.Pagos");
+            throw;
+        }
     }
 }
