@@ -78,6 +78,7 @@ builder.Services.AddScoped<IPonentesCrudService, PonentesCrudService>();
 builder.Services.AddScoped<IUsuariosService, UsuariosService>();
 builder.Services.AddScoped<IPdfStorageService, LocalPdfStorageService>();
 builder.Services.AddScoped<IPonenteActualService, PonenteActualService>();  
+builder.Services.AddSingleton<IActividadesService, ActividadesService>();
 builder.Services.AddCascadingAuthenticationState();
 
 var app = builder.Build();
@@ -129,7 +130,7 @@ app.MapPost("/account/register", async (HttpRequest request, IUsuariosService us
     await antiforgery.ValidateRequestAsync(http);
     var form = await request.ReadFormAsync();
     var resultado = await usuarios.RegistrarParticipanteAsync(
-        form["correo"].ToString(), form["contraseña"].ToString());
+        form["correo"].ToString(), form["contraseña"].ToString(), form["rol"].ToString());
 
     if (!resultado.Creado)
         return Results.Redirect($"/registro?error={Uri.EscapeDataString(resultado.Error ?? "No se pudo completar el registro.")}");

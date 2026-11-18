@@ -1,5 +1,6 @@
 ﻿@page "/participantescrud"
 @rendermode InteractiveServer
+@attribute [Authorize(Roles = "administrador")]
 @using Microsoft.AspNetCore.Components.Web
 @using prueba.Data
 @using prueba.Services

@@ -1,0 +1,84 @@
+@page "/mi-participante"
+@rendermode InteractiveServer
+@attribute [Authorize(Roles = "ponente,asistente,ambos")]
+@using prueba.Data
+@using prueba.Services
+@inject IParticipantesCrudService ParticipantesSvc
+@inject AuthenticationStateProvider AuthenticationStateProvider
+
+<PageTitle>Mis datos</PageTitle>
+
+<h3>Registrar participante</h3>
+<p class="text-muted">Completa tus datos. Solo tú puedes consultar y modificar este registro.</p>
+
+@if (_guardado)
+{
+    <div class="alert alert-success">Tus datos se guardaron correctamente.</div>
+}
+
+<EditForm Model="_participante" OnValidSubmit="Guardar" class="card card-body col-md-7">
+    <DataAnnotationsValidator />
+    <div class="mb-3">
+        <label class="form-label">Nombre</label>
+        <InputText class="form-control" @bind-Value="_participante.Nombre" />
+    </div>
+    <div class="mb-3">
+        <label class="form-label">Apellido paterno</label>
+        <InputText class="form-control" @bind-Value="_participante.Apellido_paterno" />
+    </div>
+    <div class="mb-3">
+        <label class="form-label">Apellido materno</label>
+        <InputText class="form-control" @bind-Value="_participante.Apellido_materno" />
+    </div>
+    <div class="mb-3">
+        <label class="form-label">Teléfono</label>
+        <InputText class="form-control" @bind-Value="_participante.Telefono" />
+    </div>
+    <div class="mb-3">
+        <label class="form-label">Institución</label>
+        <InputText class="form-control" @bind-Value="_participante.Institucion" />
+    </div>
+    <div class="mb-3">
+        <label class="form-label">Rol registrado</label>
+        <input class="form-control" value="@_participante.Tipo_participacion" disabled />
+    </div>
+    <button class="btn btn-primary" type="submit">Guardar mis datos</button>
+</EditForm>
+
+@code {
+    private Participante _participante = new();
+    private string _idUsuario = "";
+    private bool _esNuevo;
+    private bool _guardado;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var estado = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        _idUsuario = estado.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "";
+        var rol = estado.User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value ?? "asistente";
+        var existente = await ParticipantesSvc.GetByUsuarioAsync(_idUsuario);
+        _esNuevo = existente is null;
+        _participante = existente ?? new Participante
+        {
+            IdUsuarios = _idUsuario,
+            Tipo_participacion = rol,
+            Estado_registro = true
+        };
+    }
+
+    private async Task Guardar()
+    {
+        _participante.IdUsuarios = _idUsuario;
+        if (_esNuevo)
+        {
+            await ParticipantesSvc.CreateAsync(_participante);
+            _esNuevo = false;
+        }
+        else
+        {
+            await ParticipantesSvc.UpdateAsync(_participante);
+        }
+
+        _guardado = true;
+    }
+}

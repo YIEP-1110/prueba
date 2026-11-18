@@ -24,6 +24,15 @@
                 <input id="contraseña" name="contraseña" type="password" class="form-control" required minlength="8" autocomplete="new-password" />
                 <div class="form-text">Debe tener al menos 8 caracteres.</div>
             </div>
+            <div class="mb-3">
+                <label for="rol" class="form-label">Tipo de participación</label>
+                <select id="rol" name="rol" class="form-select" required>
+                    <option value="">-- Selecciona --</option>
+                    <option value="asistente">Asistente</option>
+                    <option value="ponente">Ponente</option>
+                    <option value="ambos">Ambos (ponente y asistente)</option>
+                </select>
+            </div>
             <button type="submit" class="btn btn-primary">Registrarme</button>
         </form>
 

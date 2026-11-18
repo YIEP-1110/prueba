@@ -8,7 +8,7 @@ public interface IUsuariosService
 {
     Task<Usuario?> BuscarPorCorreoAsync(string correo);
     Task<ResultadoAutenticacion> AutenticarAsync(string correo, string contraseña);
-    Task<(bool Creado, string? Error)> RegistrarParticipanteAsync(string correo, string contraseña);
+    Task<(bool Creado, string? Error)> RegistrarParticipanteAsync(string correo, string contraseña, string rol);
 }
 
 public sealed class UsuariosService : IUsuariosService
@@ -67,13 +67,17 @@ public sealed class UsuariosService : IUsuariosService
         return new(true, usuario, heredada);
     }
 
-    public async Task<(bool Creado, string? Error)> RegistrarParticipanteAsync(string correo, string contraseña)
+    public async Task<(bool Creado, string? Error)> RegistrarParticipanteAsync(string correo, string contraseña, string rol)
     {
         correo = NormalizarCorreo(correo);
+        rol = (rol ?? "").Trim().ToLowerInvariant();
+        var rolesPermitidos = new[] { "ponente", "asistente", "ambos" };
         if (string.IsNullOrWhiteSpace(correo) || !correo.Contains('@'))
             return (false, "Introduce un correo electrónico válido.");
         if (contraseña.Length < 8)
             return (false, "La contraseña debe tener al menos 8 caracteres.");
+        if (!rolesPermitidos.Contains(rol))
+            return (false, "Selecciona un rol válido.");
         if (await BuscarPorCorreoAsync(correo) is not null)
             return (false, "Ya existe un usuario con ese correo.");
 
@@ -81,7 +85,7 @@ public sealed class UsuariosService : IUsuariosService
         {
             Correo = correo,
             PasswordHash = CrearHash(contraseña),
-            Rol = new RolUsuario { IdRoles = 2, Tipo = "participante" }
+            Rol = new RolUsuario { IdRoles = rol == "asistente" ? 3 : rol == "ponente" ? 4 : 5, Tipo = rol }
         };
 
         await _container.CreateItemAsync(usuario, new PartitionKey(usuario.Correo));

@@ -1,0 +1,72 @@
+@page "/pago/{IdActividad}"
+@rendermode InteractiveServer
+@attribute [Authorize(Roles = "asistente,ambos")]
+@using prueba.Data
+@using prueba.Services
+@inject IActividadesService ActividadesSvc
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject NavigationManager Navigation
+
+<PageTitle>Pago</PageTitle>
+
+<h3>Confirmar pago</h3>
+
+@if (_actividad is null)
+{
+    <div class="alert alert-warning">La actividad no existe o no estás inscrito en ella.</div>
+    <a class="btn btn-primary" href="/programa">Volver al programa</a>
+}
+else if (_pagoRealizado)
+{
+    <div class="alert alert-success">El pago ya fue realizado correctamente.</div>
+    <a class="btn btn-primary" href="/mis-actividades">Ver mis actividades</a>
+}
+else
+{
+    <div class="card card-body col-md-6">
+        <h5>@_actividad.Nombre</h5>
+        <p>Importe: <strong>$@_actividad.Precio.ToString("0.00")</strong></p>
+        <p class="text-muted">Esta pantalla simula el pago. No se realizará ningún cargo real.</p>
+        <div class="mb-3">
+            <label class="form-label" for="titular">Titular de la tarjeta</label>
+            <input id="titular" class="form-control" required @bind="_titular" />
+        </div>
+        <div class="mb-3">
+            <label class="form-label" for="tarjeta">Número de tarjeta</label>
+            <input id="tarjeta" class="form-control" required minlength="4" @bind="_tarjeta" />
+        </div>
+        <button class="btn btn-success" disabled="@(!PuedePagar)" @onclick="Pagar">Pagar ahora</button>
+    </div>
+}
+
+@code {
+    [Parameter] public string IdActividad { get; set; } = "";
+
+    private Actividad? _actividad;
+    private string _idUsuario = "";
+    private string _titular = "";
+    private string _tarjeta = "";
+    private bool _pagoRealizado;
+    private bool PuedePagar => !string.IsNullOrWhiteSpace(_titular) && _tarjeta.Trim().Length >= 4;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var estado = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        _idUsuario = estado.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "";
+        _actividad = ActividadesSvc.ObtenerPrograma().FirstOrDefault(a => a.Id == IdActividad);
+        var inscripcion = ActividadesSvc.ObtenerInscripciones(_idUsuario).FirstOrDefault(i => i.IdActividad == IdActividad);
+        if (_actividad is null || inscripcion is null)
+        {
+            _actividad = null;
+            return;
+        }
+
+        _pagoRealizado = inscripcion.PagoRealizado;
+    }
+
+    private void Pagar()
+    {
+        if (_actividad is not null && ActividadesSvc.Pagar(_idUsuario, _actividad.Id))
+            Navigation.NavigateTo("/mis-actividades");
+    }
+}

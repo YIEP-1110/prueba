@@ -1,0 +1,73 @@
+@page "/programa"
+@rendermode InteractiveServer
+@attribute [Authorize(Roles = "asistente,ambos")]
+@using prueba.Data
+@using prueba.Services
+@inject IActividadesService ActividadesSvc
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject NavigationManager Navigation
+
+<PageTitle>Programa</PageTitle>
+
+<h3>Programa de congresos</h3>
+<p class="text-muted">Consulta las actividades disponibles e inscríbete.</p>
+
+@if (_mensaje is not null)
+{
+    <div class="alert alert-success">@_mensaje</div>
+}
+
+<div class="row g-3">
+    @foreach (var actividad in _programa)
+    {
+        var inscrita = ActividadesSvc.EstaInscrito(_idUsuario, actividad.Id);
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h5 class="card-title">@actividad.Nombre</h5>
+                    <p class="card-text">@actividad.Descripcion</p>
+                    <p class="mb-1"><strong>Fecha:</strong> @actividad.Fecha</p>
+                    <p class="mb-1"><strong>Horario:</strong> @actividad.Horario</p>
+                    <p class="mb-1"><strong>Lugar:</strong> @actividad.Lugar</p>
+                    <p><strong>Precio:</strong> @(actividad.Precio == 0 ? "Gratuita" : $"${actividad.Precio:0.00}")</p>
+                    @if (inscrita)
+                    {
+                        <span class="badge text-bg-success me-2">Inscrito</span>
+                        @if (actividad.Precio > 0)
+                        {
+                            <a class="btn btn-primary btn-sm" href="/pago/@actividad.Id">Ir al pago</a>
+                        }
+                    }
+                    else
+                    {
+                        <button class="btn btn-outline-primary" @onclick="() => Inscribir(actividad)">Inscribirme</button>
+                    }
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private IReadOnlyList<Actividad> _programa = [];
+    private string _idUsuario = "";
+    private string? _mensaje;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var estado = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        _idUsuario = estado.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "";
+        _programa = ActividadesSvc.ObtenerPrograma();
+    }
+
+    private void Inscribir(Actividad actividad)
+    {
+        if (ActividadesSvc.Inscribir(_idUsuario, actividad.Id))
+        {
+            _mensaje = actividad.Precio == 0
+                ? "La inscripción se realizó correctamente."
+                : "La inscripción se realizó correctamente. Completa el pago para confirmarla.";
+            Navigation.NavigateTo("/programa", replace: true);
+        }
+    }
+}

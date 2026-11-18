@@ -1,0 +1,78 @@
+@page "/mis-actividades"
+@rendermode InteractiveServer
+@attribute [Authorize(Roles = "asistente,ambos")]
+@using prueba.Data
+@using prueba.Services
+@inject IActividadesService ActividadesSvc
+@inject AuthenticationStateProvider AuthenticationStateProvider
+
+<PageTitle>Mis actividades</PageTitle>
+
+<h3>Actividades inscritas</h3>
+<p class="text-muted">Aquí puedes consultar tus actividades y el estado del pago.</p>
+
+@if (!_cargado)
+{
+    <p>Cargando...</p>
+}
+else if (!_inscripciones.Any())
+{
+    <div class="alert alert-info">Todavía no tienes actividades inscritas.</div>
+    <a class="btn btn-primary" href="/programa">Ver programa</a>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Actividad</th>
+                <th>Fecha</th>
+                <th>Horario</th>
+                <th>Estado</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var inscripcion in _inscripciones)
+            {
+                var actividad = _programa.First(a => a.Id == inscripcion.IdActividad);
+                <tr>
+                    <td>@actividad.Nombre</td>
+                    <td>@actividad.Fecha</td>
+                    <td>@actividad.Horario</td>
+                    <td>
+                        @if (actividad.Precio == 0 || inscripcion.PagoRealizado)
+                        {
+                            <span class="badge text-bg-success">Confirmada</span>
+                        }
+                        else
+                        {
+                            <span class="badge text-bg-warning">Pago pendiente</span>
+                        }
+                    </td>
+                    <td>
+                        @if (actividad.Precio > 0 && !inscripcion.PagoRealizado)
+                        {
+                            <a class="btn btn-sm btn-primary" href="/pago/@actividad.Id">Pagar</a>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private IReadOnlyList<Actividad> _programa = [];
+    private IReadOnlyList<InscripcionActividad> _inscripciones = [];
+    private bool _cargado;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var estado = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var idUsuario = estado.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "";
+        _programa = ActividadesSvc.ObtenerPrograma();
+        _inscripciones = ActividadesSvc.ObtenerInscripciones(idUsuario);
+        _cargado = true;
+    }
+}

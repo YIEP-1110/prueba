@@ -8,6 +8,7 @@ public interface IParticipantesCrudService
     Task<List<Participante>> GetAllAsync();
     Task<List<Participante>> SearchAsync(string termino);   
     Task<Participante?> GetAsync(string id, string idUsuarios);
+    Task<Participante?> GetByUsuarioAsync(string idUsuarios);
     Task CreateAsync(Participante p);
     Task UpdateAsync(Participante p);
     Task DeleteAsync(string id, string idUsuarios);
@@ -71,6 +72,22 @@ public class ParticipantesCrudService : IParticipantesCrudService
         {
             return null;
         }
+    }
+
+    public async Task<Participante?> GetByUsuarioAsync(string idUsuarios)
+    {
+        var query = new QueryDefinition("SELECT TOP 1 * FROM c WHERE c.IdUsuarios = @idUsuarios")
+            .WithParameter("@idUsuarios", idUsuarios);
+        var iterator = _container.GetItemQueryIterator<Participante>(query);
+        while (iterator.HasMoreResults)
+        {
+            var response = await iterator.ReadNextAsync();
+            var participante = response.Resource.FirstOrDefault();
+            if (participante is not null)
+                return participante;
+        }
+
+        return null;
     }
 
     public async Task CreateAsync(Participante p) =>
