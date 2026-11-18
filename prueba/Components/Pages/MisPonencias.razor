@@ -1,30 +1,21 @@
 ﻿@page "/mis-ponencias"
 @rendermode InteractiveServer
+@attribute [Authorize(Roles = "ponente,ambos")]
 @using prueba.Data
 @using prueba.Services
 @inject IPonenciasCrudService PonenciasSvc
-@inject IPonentesCrudService PonentesSvc
 @inject IPonenteActualService PonenteActualSvc
 
 <h3>Consulta de ponencias</h3>
 <p class="text-muted">Aquí puedes verificar en qué estado está cada ponencia que registraste.</p>
 
-@if (_ponenteActual is null)
+@if (_ponenteActual is not null)
 {
-    <div class="card card-body mb-3">
-        <label class="form-label">Ponente <small class="text-muted">(modo prueba: sin sesión de ponente)</small></label>
-        <select class="form-select" @bind="_idSel" @bind:after="Cargar">
-            <option value="">-- Selecciona --</option>
-            @foreach (var p in _ponentes)
-            {
-                <option value="@p.Ponente!.IdPonente">@p.Nombre @p.Apellido_paterno</option>
-            }
-        </select>
-    </div>
+    <p>Ponente: <strong>@_ponenteActual.Nombre @_ponenteActual.Apellido_paterno</strong></p>
 }
 else
 {
-    <p>Ponente: <strong>@_ponenteActual.Nombre @_ponenteActual.Apellido_paterno</strong></p>
+    <div class="alert alert-warning">Completa primero tus datos de participante para consultar tus ponencias.</div>
 }
 
 <button class="btn btn-outline-secondary mb-3" @onclick="Cargar">Actualizar</button>
@@ -62,17 +53,14 @@ else
 
 @code {
     List<Ponencia> _lista = new();
-    List<Participante> _ponentes = new();
     Participante? _ponenteActual;
-    string _idSel = "";
 
     string? IdPonenteActivo =>
-        _ponenteActual?.Ponente?.IdPonente ?? (string.IsNullOrEmpty(_idSel) ? null : _idSel);
+        _ponenteActual?.Ponente?.IdPonente;
 
     protected override async Task OnInitializedAsync()
     {
         _ponenteActual = await PonenteActualSvc.GetAsync();
-        _ponentes = await PonentesSvc.GetAllAsync();
         await Cargar();
     }
 

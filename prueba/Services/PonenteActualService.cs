@@ -12,12 +12,12 @@ public interface IPonenteActualService
 public class PonenteActualService : IPonenteActualService
 {
     private readonly AuthenticationStateProvider _auth;
-    private readonly IPonentesCrudService _ponentes;
+    private readonly IParticipantesCrudService _participantes;
 
-    public PonenteActualService(AuthenticationStateProvider auth, IPonentesCrudService ponentes)
+    public PonenteActualService(AuthenticationStateProvider auth, IParticipantesCrudService participantes)
     {
         _auth = auth;
-        _ponentes = ponentes;
+        _participantes = participantes;
     }
 
     public async Task<Participante?> GetAsync()
@@ -28,6 +28,17 @@ public class PonenteActualService : IPonenteActualService
         var idUsuario = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrEmpty(idUsuario)) return null;
 
-        return (await _ponentes.GetAllAsync()).FirstOrDefault(p => p.IdUsuarios == idUsuario);
+        var participante = await _participantes.GetByUsuarioAsync(idUsuario);
+        if (participante is null)
+            return null;
+
+        var rol = user.FindFirst(ClaimTypes.Role)?.Value;
+        if (participante.Ponente is null && (rol == "ponente" || rol == "ambos"))
+        {
+            participante.Ponente = new PonenteInfo();
+            await _participantes.UpdateAsync(participante);
+        }
+
+        return participante;
     }
 }

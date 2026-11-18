@@ -1,10 +1,10 @@
 ﻿@page "/ponencias"
 @rendermode InteractiveServer
+@attribute [Authorize(Roles = "ponente,ambos")]
 @using Microsoft.AspNetCore.Components.Forms
 @using prueba.Data
 @using prueba.Services
 @inject IPonenciasCrudService PonenciasSvc
-@inject IPonentesCrudService PonentesSvc
 @inject IPonenteActualService PonenteActualSvc
 @inject IPdfStorageService Pdfs
 
@@ -21,22 +21,13 @@
     </div>
 }
 
-@if (_ponenteActual is null)
+@if (_ponenteActual is not null)
 {
-    <div class="card card-body mb-3">
-        <label class="form-label">Ponente <small class="text-muted">(modo prueba: sin sesión de ponente)</small></label>
-        <select class="form-select" @bind="_idSel" @bind:after="CargarPonencias">
-            <option value="">-- Selecciona --</option>
-            @foreach (var p in _ponentes)
-            {
-                <option value="@p.Ponente!.IdPonente">@p.Nombre @p.Apellido_paterno</option>
-            }
-        </select>
-    </div>
+    <p>Ponente: <strong>@_ponenteActual.Nombre @_ponenteActual.Apellido_paterno</strong></p>
 }
 else
 {
-    <p>Ponente: <strong>@_ponenteActual.Nombre @_ponenteActual.Apellido_paterno</strong></p>
+    <div class="alert alert-warning">Completa primero tus datos de participante para registrar ponencias.</div>
 }
 
 <EditForm Model="_model" OnValidSubmit="Guardar" class="card card-body mb-4">
@@ -103,21 +94,18 @@ else
 
 @code {
     List<Ponencia> _lista = new();
-    List<Participante> _ponentes = new();
     Participante? _ponenteActual;
-    string _idSel = "";
     Ponencia _model = new();
     IBrowserFile? _pdf;
     bool _editando;
     string? _error, _mensaje;
 
     string? IdPonenteActivo =>
-        _ponenteActual?.Ponente?.IdPonente ?? (string.IsNullOrEmpty(_idSel) ? null : _idSel);
+        _ponenteActual?.Ponente?.IdPonente;
 
     protected override async Task OnInitializedAsync()
     {
         _ponenteActual = await PonenteActualSvc.GetAsync();
-        _ponentes = await PonentesSvc.GetAllAsync();
         await CargarPonencias();
     }
 
