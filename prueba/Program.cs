@@ -29,11 +29,6 @@ var cosmosSettings = builder.Configuration.GetSection("ConnectionStrings2").Get<
 var cosmosConn = cosmosSettings?.CosmosDb;
 var cosmosDbName = cosmosSettings?.CosmosDb_Database;
 
-// Pagos usa SQL Server y debe registrarse con el mismo tipo que inyecta
-// PagosService. Sin este registro, el contenedor no puede construirlo.
-builder.Services.AddDbContext<AppDbPagos>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
-
 // Register CosmosClient for direct SDK access (used by ParticipantsService)
 if (!string.IsNullOrWhiteSpace(cosmosConn))
 {
