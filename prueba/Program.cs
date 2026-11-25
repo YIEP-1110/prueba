@@ -54,16 +54,12 @@ if (!string.IsNullOrWhiteSpace(cosmosConn))
     {
         builder.Services.AddSingleton(new Microsoft.Azure.Cosmos.CosmosClient(endpoint, key));
 
-        // Estos servicios dependen de CosmosClient; no se registran si Cosmos
-        // no está configurado para evitar dependencias imposibles de resolver.
-        builder.Services.AddScoped<IParticipantesCrudService, ParticipantesCrudService>();
-        builder.Services.AddScoped<IPonenciasCrudService, PonenciasCrudService>();
-        builder.Services.AddScoped<IPonentesCrudService, PonentesCrudService>();
+        
     }
 }
 
 builder.Services.AddScoped<IPagosService, PagosService>();
-builder.Services.AddScoped<IPdfStorageService, LocalPdfStorageService>();
+
 
 var app = builder.Build();
 
