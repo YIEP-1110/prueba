@@ -8,36 +8,39 @@
 
 <div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
     <nav class="nav flex-column">
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Home
-            </NavLink>
-        </div>
         <AuthorizeView>
             <Authorized Context="authContext">
-                <AuthorizeView Roles="ponente,ambos">
-                    <div class="nav-item px-3"><NavLink class="nav-link" href="ponencias">Registrar ponencia</NavLink></div>
-                    <div class="nav-item px-3"><NavLink class="nav-link" href="mis-ponencias">Consultar ponencias</NavLink></div>
-                </AuthorizeView>
-                <AuthorizeView Roles="asistente,ambos">
+                @if (authContext.User.IsInRole("administrador") || _datosGuardados)
+                {
+                    <div class="nav-item px-3"><NavLink class="nav-link" href="">Home</NavLink></div>
+                    <AuthorizeView Roles="ponente,ambos">
+                        <div class="nav-item px-3"><NavLink class="nav-link" href="ponencias">Registrar ponencia</NavLink></div>
+                        <div class="nav-item px-3"><NavLink class="nav-link" href="mis-ponencias">Consultar ponencias</NavLink></div>
+                    </AuthorizeView>
+                    <AuthorizeView Roles="asistente,ambos">
+                        <div class="nav-item px-3"><NavLink class="nav-link" href="mi-participante">Mis datos</NavLink></div>
+                        <div class="nav-item px-3"><NavLink class="nav-link" href="programa">Programa de congresos</NavLink></div>
+                        <div class="nav-item px-3"><NavLink class="nav-link" href="mis-actividades">Actividades inscritas</NavLink></div>
+                    </AuthorizeView>
+                    <AuthorizeView Roles="ponente">
+                        <div class="nav-item px-3"><NavLink class="nav-link" href="mi-participante">Mis datos</NavLink></div>
+                    </AuthorizeView>
+                    <AuthorizeView Roles="administrador" Context="roleContext">
+                        <div class="nav-item px-3">
+                            <NavLink class="nav-link" href="participantescrud">Participantes</NavLink>
+                        </div>
+                        <div class="nav-item px-3">
+                            <NavLink class="nav-link" href="ponentes">Ponentes</NavLink>
+                        </div>
+                        <div class="nav-item px-3">
+                            <NavLink class="nav-link" href="admin/ponencias">Admin: revisar ponencias</NavLink>
+                        </div>
+                    </AuthorizeView>
+                }
+                else
+                {
                     <div class="nav-item px-3"><NavLink class="nav-link" href="mi-participante">Mis datos</NavLink></div>
-                    <div class="nav-item px-3"><NavLink class="nav-link" href="programa">Programa de congresos</NavLink></div>
-                    <div class="nav-item px-3"><NavLink class="nav-link" href="mis-actividades">Actividades inscritas</NavLink></div>
-                </AuthorizeView>
-                <AuthorizeView Roles="ponente">
-                    <div class="nav-item px-3"><NavLink class="nav-link" href="mi-participante">Mis datos</NavLink></div>
-                </AuthorizeView>
-                <AuthorizeView Roles="administrador" Context="roleContext">
-                    <div class="nav-item px-3">
-                        <NavLink class="nav-link" href="participantescrud">Participantes</NavLink>
-                    </div>
-                    <div class="nav-item px-3">
-                        <NavLink class="nav-link" href="ponentes">Ponentes</NavLink>
-                    </div>
-                    <div class="nav-item px-3">
-                        <NavLink class="nav-link" href="admin/ponencias">Admin: revisar ponencias</NavLink>
-                    </div>
-                </AuthorizeView>
+                }
                 <div class="nav-item px-3">
                     <form method="post" action="/account/logout">
                         <AntiforgeryToken />
@@ -52,4 +55,25 @@
         </AuthorizeView>
     </nav>
 </div>
+
+@code {
+    [Inject] private prueba.Services.IParticipantesCrudService ParticipantesSvc { get; set; } = default!;
+    [Inject] private AuthenticationStateProvider AuthenticationStateProvider { get; set; } = default!;
+
+    private bool _datosGuardados;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var estado = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        if (estado.User.Identity?.IsAuthenticated != true || estado.User.IsInRole("administrador"))
+        {
+            _datosGuardados = estado.User.IsInRole("administrador");
+            return;
+        }
+
+        var idUsuario = estado.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        _datosGuardados = !string.IsNullOrWhiteSpace(idUsuario)
+            && await ParticipantesSvc.GetByUsuarioAsync(idUsuario) is not null;
+    }
+}
 

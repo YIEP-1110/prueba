@@ -5,6 +5,7 @@
 @using prueba.Services
 @inject IParticipantesCrudService ParticipantesSvc
 @inject AuthenticationStateProvider AuthenticationStateProvider
+@inject NavigationManager Navigation
 
 <PageTitle>Mis datos</PageTitle>
 
@@ -79,6 +80,6 @@
             await ParticipantesSvc.UpdateAsync(_participante);
         }
 
-        _guardado = true;
+        Navigation.NavigateTo("/", forceLoad: true);
     }
 }

@@ -122,7 +122,7 @@ app.MapPost("/account/login", async (HttpRequest request, IUsuariosService usuar
         new ClaimsPrincipal(new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme)),
         new AuthenticationProperties { IsPersistent = true });
 
-    return Results.Redirect("/");
+    return Results.Redirect(usuario.Rol.Tipo == "administrador" ? "/" : "/mi-participante");
 });
 
 app.MapPost("/account/register", async (HttpRequest request, IUsuariosService usuarios, HttpContext http, IAntiforgery antiforgery) =>
